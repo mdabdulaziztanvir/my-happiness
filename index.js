@@ -9,13 +9,18 @@ import "./models/UserModel.js";
 
 // importing routes
 import userRoutes from "./routes/user.routes.js";
-
+import multerRoutes from "./routes/multer.route.js";
 // server setup
 const app = express();
 app.use(express.json());
+app.use(express.static("public"));
 app.use(
   cors({
-    origin: ["http://192.168.88.210:5173", "http://aat.c:5173"],
+    origin: [
+      "http://192.168.88.12:5173",
+      "http://aat.c:5173",
+      "https://myhappinessreact.grubdev.top",
+    ],
   }),
 );
 app.get("/test", (req, res) => {
@@ -23,7 +28,7 @@ app.get("/test", (req, res) => {
 });
 
 app.use("/api", userRoutes);
-
+app.use("/api", multerRoutes);
 // 404 error handling express
 app.use((req, res, next) => {
   const error = new Error("url not found from tanvir");
@@ -59,6 +64,6 @@ const databaseConnection = async () => {
 };
 databaseConnection();
 
-app.listen(5000, "0.0.0.0", () => {
+app.listen(5002, "0.0.0.0", () => {
   console.log("server running");
 });

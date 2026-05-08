@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
 import { User } from "../models/UserModel.js";
 import bcrypt from "bcrypt";
+import { Op } from "sequelize";
 
 export const createUser = async (req, res) => {
   const { name, phoneNumber, email, password } = req.body;
@@ -59,7 +60,14 @@ export const loginUser = async (req, res) => {
     }
     const existingUser = await User.findOne({
       where: { username },
-      attributes: ["id", "name", "username", "password", "phoneNumber"],
+      attributes: [
+        "id",
+        "name",
+        "username",
+        "password",
+        "phoneNumber",
+        "adminValue",
+      ],
     });
     if (!existingUser) {
       return res.status(400).json({ message: "invalid credentials" });
@@ -88,6 +96,29 @@ export const loginUser = async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       message: "unable to create user from routes",
+      error: error.message,
+    });
+  }
+};
+// forget user
+export const forgetPassword = async (req, res) => {
+  const { forgetCredit } = req.body;
+  try {
+    const user = await User.findOne({
+      where: {
+        [Op.or]: [{ username: forgetCredit }, { email: forgetCredit }],
+      },
+      attributes: ["id"],
+    });
+    if (!user)
+      return res.status(400).json({
+        message: "Please Enter valid Username or Password and try again...",
+      });
+
+    return res.status(200).json({ message: "found user", user });
+  } catch (error) {
+    return res.status(500).json({
+      message: "unable to forget pasword",
       error: error.message,
     });
   }

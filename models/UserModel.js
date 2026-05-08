@@ -29,6 +29,11 @@ export const User = sequelize.define(
     username: {
       type: DataTypes.STRING,
       allowNull: false,
+      unique: true,
+    },
+    adminValue: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
     },
   },
   {
