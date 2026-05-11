@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 import { User } from "../models/UserModel.js";
 import bcrypt from "bcrypt";
-import { Op } from "sequelize";
+import { Op, where } from "sequelize";
 
 export const createUser = async (req, res) => {
   const { name, phoneNumber, email, password } = req.body;
@@ -54,12 +54,13 @@ export const createUser = async (req, res) => {
 // user login
 export const loginUser = async (req, res) => {
   const { username, password } = req.body;
+  // username name deya holeo eta diye username and email kina 2 tay check kore kaj kora hobe
   try {
     if (!username || !password) {
       return res.status(400).json({ message: "invalid credentials" });
     }
     const existingUser = await User.findOne({
-      where: { username },
+      where: { [Op.or]: [{ username }, { email: username }] },
       attributes: [
         "id",
         "name",
@@ -67,6 +68,7 @@ export const loginUser = async (req, res) => {
         "password",
         "phoneNumber",
         "adminValue",
+        "email",
       ],
     });
     if (!existingUser) {
@@ -85,19 +87,47 @@ export const loginUser = async (req, res) => {
       { id: existingUser.id },
       process.env.JWT_SECRET,
       {
-        expiresIn: "1h",
+        expiresIn: "10m",
+      },
+    );
+
+    const refreshToken = jwt.sign(
+      { id: existingUser.id },
+      process.env.JWT_REFRESH_SECRET,
+      {
+        expiresIn: "7d",
       },
     );
 
     const { password: _, ...secureUser } = existingUser.toJSON();
-    return res
-      .status(200)
-      .json({ message: "good to go", user: secureUser, token: accessToken });
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: false,
+      sameSite: "lax",
+      // path: '/api/refresh',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+    return res.status(200).json({
+      message: "good to go",
+      user: secureUser,
+      accessToken: accessToken,
+    });
   } catch (error) {
     return res.status(500).json({
       message: "unable to create user from routes",
       error: error.message,
     });
+  }
+};
+// logout user
+export const logout = async (req, res) => {
+  try {
+    await res.clearCookie("refreshToken");
+    return res
+      .status(200)
+      .json({ success: true, message: "logout successfully" });
+  } catch (error) {
+    return res.status(400).json({ message: "invalid cookies" });
   }
 };
 // forget user
@@ -115,6 +145,8 @@ export const forgetPassword = async (req, res) => {
         message: "Please Enter valid Username or Password and try again...",
       });
 
+    user.password = password ? password : user.password;
+    await user.save();
     return res.status(200).json({ message: "found user", user });
   } catch (error) {
     return res.status(500).json({
@@ -123,11 +155,152 @@ export const forgetPassword = async (req, res) => {
     });
   }
 };
-
+// get all user
 export const allUsers = async (req, res) => {
   try {
-    const allUser = await User.findAll();
-    return res.status(200).json(allUser);
+    const allUser = await User.findAll({ order: [["createdAt", "DESC"]] });
+    return res.status(200).json({ user: allUser });
+  } catch (error) {
+    return res.status(500).json({ message: "unable to get user from routes" });
+  }
+};
+// make a user to admin
+export const makeAdmin = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const user = await User.findByPk(id);
+    if (!user) return res.status(400).json({ message: "user not found" });
+
+    if (user.adminValue === 1)
+      return res.status(400).json({ message: "This user is already Admin" });
+
+    const adminDone = await user.update(
+      { adminValue: 1 },
+      { where: { id: id } },
+    );
+
+    return res
+      .status(200)
+      .json({ message: "You Have Successfully Made a new Admin", adminDone });
+  } catch (error) {
+    return res.status(500).json({ message: "error making user admin" });
+  }
+};
+// delete a user
+export const deleteSingleUser = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const user = await User.findByPk(id);
+    if (!user)
+      return res.status(400).json({ message: "user khuje paoa jayni" });
+    if (user.adminValue === 1)
+      return res.status(400).json({ message: "you can not delete a admin" });
+    const deletedUser = await user.destroy();
+    const { password: _, ...safeUser } = user.toJSON();
+    return res
+      .status(200)
+      .json({ message: "user has been deleted", user: safeUser });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ message: "error deleteding user", error: error?.message });
+  }
+};
+// update a single user
+
+export const updateUser = async (req, res) => {
+  const { id } = req.params;
+  const { username, email, mobile, name, adminValue } = req.body;
+  try {
+    const user = await User.findByPk(id);
+
+    if (!user)
+      return res.status(400).json({ message: "user khuje paoa jayni" });
+    const uniqueUsernameEmail = await User.findOne({
+      where: {
+        [Op.and]: [
+          { [Op.or]: [{ username: username || "" }, { email: email || "" }] },
+          { id: { [Op.ne]: id } },
+        ],
+      },
+    });
+    if (uniqueUsernameEmail)
+      return res.status(400).json({
+        message: "This Username Or Email Already used, try a different one...",
+      });
+    user.name = name ? name : user.name;
+
+    user.username = username ? username : user.username;
+    user.email = email ? email : user.email;
+
+    user.mobile = mobile ? mobile : user.mobile;
+    if (adminValue !== undefined) {
+      user.adminValue = adminValue ? adminValue : user.adminValue;
+    }
+
+    await user.save();
+    const { password: _, ...safeUser } = user.toJSON();
+    return res
+      .status(200)
+      .json({ message: "user updated successfull", user: safeUser });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ message: "error updating user", error: error });
+  }
+};
+// get single user
+export const getSingleUser = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const user = await User.findByPk(id);
+
+    if (!user) {
+      return res.status(404).json({
+        message: "user not found",
+      });
+    }
+    const { password: _, ...safeUser } = user.toJSON();
+    return res.status(200).json({ user: safeUser });
+  } catch (error) {
+    return res.status(500).json({
+      message: "error fetching user",
+    });
+  }
+};
+
+export const refresh = (req, res) => {
+  const cookies = req.cookies;
+
+  if (!cookies?.refreshToken)
+    return res.status(401).json({ message: "No refresh token" });
+
+  const refreshToken = cookies.refreshToken;
+
+  jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET, (err, decoded) => {
+    if (err) return res.status(403).json({ message: "Invalid refresh token" });
+
+    // Generate a fresh new Access Token
+    const newAccessToken = jwt.sign(
+      { id: decoded.id },
+      process.env.JWT_SECRET,
+      { expiresIn: "15m" },
+    );
+
+    res.json({ accessToken: newAccessToken });
+  });
+};
+
+export const me = async (req, res) => {
+  const id = req.id;
+  try {
+    const user = await User.findByPk(id);
+    if (!user)
+      return res.status(400).json({ message: "not authenticatted me" });
+    const { password: _, ...safeUser } = user.toJSON();
+
+    return res.json({ user: safeUser });
   } catch (error) {
     return res.status(500).json({ message: "unable to get user from routes" });
   }

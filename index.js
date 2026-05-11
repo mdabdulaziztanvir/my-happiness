@@ -1,6 +1,8 @@
 import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
+import cookieParser from "cookie-parser";
+
 import sequelize from "./config/dbConnect.js";
 dotenv.config();
 
@@ -21,8 +23,11 @@ app.use(
       "http://aat.c:5173",
       "https://myhappinessreact.grubdev.top",
     ],
+    credentials: true,
   }),
 );
+app.use(cookieParser());
+
 app.get("/test", (req, res) => {
   return res.send("ok");
 });
