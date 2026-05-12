@@ -7,7 +7,9 @@ import sequelize from "./config/dbConnect.js";
 dotenv.config();
 
 //importing models
+import "./models/ModelRelations.js";
 import "./models/UserModel.js";
+import "./models/OTPModel.js";
 
 // importing routes
 import userRoutes from "./routes/user.routes.js";
@@ -60,7 +62,7 @@ app.use((err, req, res, next) => {
 // database connection
 const databaseConnection = async () => {
   try {
-    await sequelize.sync({ force: false });
+    await sequelize.sync({ alter: false });
     console.log("database connected successfully");
   } catch (error) {
     console.log("database not connected");

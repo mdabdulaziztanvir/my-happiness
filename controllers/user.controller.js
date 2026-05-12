@@ -2,6 +2,10 @@ import jwt from "jsonwebtoken";
 import { User } from "../models/UserModel.js";
 import bcrypt from "bcrypt";
 import { Op, where } from "sequelize";
+import crypto from "crypto";
+// import { randomInt } from "crypto";
+import { OTPModel } from "../models/OTPModel.js";
+import { sendOTPEmail } from "../utils/brevoForgetMail.js";
 
 export const createUser = async (req, res) => {
   const { name, phoneNumber, email, password } = req.body;
@@ -133,24 +137,106 @@ export const logout = async (req, res) => {
 // forget user
 export const forgetPassword = async (req, res) => {
   const { forgetCredit } = req.body;
+
   try {
     const user = await User.findOne({
       where: {
         [Op.or]: [{ username: forgetCredit }, { email: forgetCredit }],
       },
-      attributes: ["id"],
+      attributes: ["id", "email", "username"],
     });
     if (!user)
       return res.status(400).json({
         message: "Please Enter valid Username or Password and try again...",
       });
 
-    user.password = password ? password : user.password;
-    await user.save();
-    return res.status(200).json({ message: "found user", user });
+    const otp = crypto.randomInt(10000, 999999).toString();
+    // expires after two minutes
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+
+    // check already have the id in the databse of otps
+
+    const existingOtp = await OTPModel.findOne({ where: { userId: user.id } });
+    let otpData;
+    if (existingOtp) {
+      otpData = await existingOtp.update({
+        otp,
+        expiresAt,
+      });
+    } else {
+      otpData = await OTPModel.create({
+        userId: user.id,
+        otp,
+        expiresAt,
+      });
+    }
+
+    await sendOTPEmail(user.email, user.username, otp);
+
+    return res
+      .status(200)
+      .json({ message: "found user", user, otp: otpData.id });
   } catch (error) {
     return res.status(500).json({
       message: "unable to forget pasword",
+      error: error.message,
+    });
+  }
+};
+// export const validate otp and generae a new password
+export const validateOtp = async (req, res) => {
+  const { validateOtp, userUuid } = req.body;
+
+  try {
+    const validOtpData = await OTPModel.findOne({
+      where: { id: userUuid, otp: validateOtp },
+    });
+    if (!validOtpData)
+      return res.status(400).json({ message: "otp mismatched" });
+
+    // check otp expirrdate
+    if (new Date() > validOtpData.expiresAt) {
+      await validOtpData.destroy();
+      return res.status(400).json({ message: "otp expired" });
+    }
+
+    return res
+      .status(200)
+      .json({ message: "otp matched now create a new password" });
+  } catch (error) {
+    return res.status(500).json({
+      message: "unable to validate otp ",
+      error: error.message,
+    });
+  }
+};
+// update password
+export const updatePassword = async (req, res) => {
+  const { validateOtp, userUuid, newPassword } = req.body;
+  try {
+    const validateOtpDB = await OTPModel.findOne({
+      where: { id: userUuid, otp: validateOtp },
+    });
+    if (!validateOtpDB) return res.status(400).json({ message: "invalid otp" });
+    if (new Date() > validateOtpDB.expiresAt) {
+      validateOtpDB.destroy();
+
+      return res.status(400).json({ message: "expired token" });
+    }
+
+    // userdId diye user khoja
+
+    const user = await User.findOne({ where: { id: validateOtpDB.userId } });
+    if (!user)
+      return res.status(400).json({ message: "you are not a valid user" });
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await user.update({ password: hashedPassword });
+    validateOtpDB.destroy();
+
+    return res.status(200).json({ message: "password Updates successfull," });
+  } catch (error) {
+    return res.status(500).json({
+      message: "unable to validate otp ",
       error: error.message,
     });
   }
@@ -269,7 +355,7 @@ export const getSingleUser = async (req, res) => {
     });
   }
 };
-
+// refrrwsh logic with refrsh cookies
 export const refresh = (req, res) => {
   const cookies = req.cookies;
 
@@ -291,7 +377,7 @@ export const refresh = (req, res) => {
     res.json({ accessToken: newAccessToken });
   });
 };
-
+// profile me after every refrsh
 export const me = async (req, res) => {
   const id = req.id;
   try {

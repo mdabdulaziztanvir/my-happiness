@@ -10,7 +10,9 @@ import {
   makeAdmin,
   me,
   refresh,
+  updatePassword,
   updateUser,
+  validateOtp,
 } from "../controllers/user.controller.js";
 import { adminCheck, checkLogin } from "../middlewares/auth.middleware.js";
 const router = express.Router();
@@ -22,7 +24,9 @@ router.post("/admined/:id", checkLogin, adminCheck, makeAdmin);
 router.post("/deleted/:id", checkLogin, adminCheck, deleteSingleUser);
 router.put("/updated/:id", checkLogin, adminCheck, updateUser);
 router.get("/user/:id", checkLogin, adminCheck, getSingleUser);
-router.post("/forget-password", forgetPassword);
+router.post("/user/reset-password", forgetPassword);
+router.post("/user/validate-otp", validateOtp);
+router.post("/user/update-password", updatePassword);
 router.post("/logout", checkLogin, logout);
 
 router.get("/me", checkLogin, me);
