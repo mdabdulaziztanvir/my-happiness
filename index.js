@@ -14,6 +14,9 @@ import "./models/OTPModel.js";
 // importing routes
 import userRoutes from "./routes/user.routes.js";
 import multerRoutes from "./routes/multer.route.js";
+import blogRoutes from "./routes/blog.routes.js";
+import productRouter from "./routes/product.route.js";
+import cartRoutes from "./routes/cart.routes.js";
 // server setup
 const app = express();
 app.use(express.json());
@@ -36,6 +39,9 @@ app.get("/test", (req, res) => {
 
 app.use("/api", userRoutes);
 app.use("/api", multerRoutes);
+app.use("/api/", blogRoutes);
+app.use("/api/", productRouter);
+app.use("/api/", cartRoutes);
 // 404 error handling express
 app.use((req, res, next) => {
   const error = new Error("url not found from tanvir");
@@ -60,16 +66,16 @@ app.use((err, req, res, next) => {
   });
 });
 // database connection
-const databaseConnection = async () => {
-  try {
-    await sequelize.sync({ alter: false });
-    console.log("database connected successfully");
-  } catch (error) {
-    console.log("database not connected");
-    process.exit(1);
-  }
-};
-databaseConnection();
+// const databaseConnection = async () => {
+//   try {
+//     await sequelize.sync({ alter: false });
+//     console.log("database connected successfully");
+//   } catch (error) {
+//     console.log("database not connected");
+//     process.exit(1);
+//   }
+// };
+// databaseConnection();
 
 app.listen(5002, "0.0.0.0", () => {
   console.log("server running");
