@@ -1,5 +1,7 @@
 import { Blog } from "./blog.js";
 import { Cart } from "./cart.js";
+import { Order } from "./order.js";
+import { OrderItems } from "./orderitems.js";
 import { OTPModel } from "./OTPModel.js";
 import { Product } from "./product.js";
 import { User } from "./UserModel.js";
@@ -68,4 +70,58 @@ Product.hasMany(Cart, {
 Cart.belongsTo(Product, {
   foreignKey: "productId",
   as: "product",
+});
+
+// order relation ===============
+User.hasMany(Order, {
+  foreignKey: "userId",
+  as: "orders",
+  onDelete: "RESTRICT",
+  onUpdate: "CASCADE",
+});
+
+Order.belongsTo(User, {
+  foreignKey: "userId",
+  as: "user",
+  onDelete: "RESTRICT",
+  onUpdate: "CASCADE",
+});
+// =========================
+Order.hasMany(OrderItems, {
+  foreignKey: "orderId",
+  as: "items",
+  onDelete: "RESTRICT",
+  onUpdate: "CASCADE",
+});
+OrderItems.belongsTo(Order, {
+  foreignKey: "orderId",
+  as: "order",
+  onDelete: "RESTRICT",
+  onUpdate: "CASCADE",
+});
+// ===========================
+User.hasMany(OrderItems, {
+  foreignKey: "userId",
+  as: "orderItems",
+  onDelete: "RESTRICT",
+  onUpdate: "CASCADE",
+});
+OrderItems.belongsTo(User, {
+  foreignKey: "userId",
+  as: "user",
+  onDelete: "RESTRICT",
+  onUpdate: "CASCADE",
+});
+// ======================
+Product.hasMany(OrderItems, {
+  foreignKey: "productId",
+  as: "orderItems",
+  onDelete: "RESTRICT",
+  onUpdate: "CASCADE",
+});
+OrderItems.belongsTo(Product, {
+  foreignKey: "productId",
+  as: "product",
+  onDelete: "RESTRICT",
+  onUpdate: "CASCADE",
 });

@@ -17,6 +17,7 @@ import multerRoutes from "./routes/multer.route.js";
 import blogRoutes from "./routes/blog.routes.js";
 import productRouter from "./routes/product.route.js";
 import cartRoutes from "./routes/cart.routes.js";
+import orderRoutes from "./routes/order.routes.js";
 // server setup
 const app = express();
 app.use(express.json());
@@ -42,6 +43,7 @@ app.use("/api", multerRoutes);
 app.use("/api/", blogRoutes);
 app.use("/api/", productRouter);
 app.use("/api/", cartRoutes);
+app.use("/api", orderRoutes);
 // 404 error handling express
 app.use((req, res, next) => {
   const error = new Error("url not found from tanvir");
