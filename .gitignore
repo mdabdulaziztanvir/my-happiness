@@ -5,5 +5,5 @@ test/*
 config.json
 
 public
-migrations/*
+
 config.js
