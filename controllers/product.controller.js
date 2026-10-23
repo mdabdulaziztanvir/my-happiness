@@ -6,7 +6,7 @@ import fs from "fs";
 
 function improveSlug(aaa) {
   const data = aaa.trim().replaceAll(" ", "-");
-  return data;
+  return data.toLowerCase();
 }
 
 const productDirectory = "./public/uploads/products";
@@ -136,7 +136,7 @@ export const destrySingleProduc = async (req, res) => {
   } catch (error) {
     return res
       .status(500)
-      .json({ message: "error creating product", error: error.message });
+      .json({ message: "error deleting product", error: error.message });
   }
 };
 

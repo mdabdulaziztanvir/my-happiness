@@ -1,10 +1,10 @@
-import express from "express";
 import dotenv from "dotenv";
+dotenv.config();
+import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 
 import sequelize from "./config/dbConnect.js";
-dotenv.config();
 
 //importing models
 import "./models/ModelRelations.js";
@@ -26,8 +26,7 @@ app.use(express.static("public"));
 app.use(
   cors({
     origin: [
-      "http://192.168.88.12:5173",
-      "http://aat.c:5173",
+      "http://192.168.88.21:5173",
       "https://myhappinessreact.grubdev.top",
     ],
     credentials: true,
@@ -70,17 +69,20 @@ app.use((err, req, res, next) => {
   });
 });
 // database connection
-// const databaseConnection = async () => {
-//   try {
-//     await sequelize.sync({ alter: false });
-//     console.log("database connected successfully");
-//   } catch (error) {
-//     console.log("database not connected");
-//     process.exit(1);
-//   }
-// };
-// databaseConnection();
 
-app.listen(5002, "0.0.0.0", () => {
-  console.log("server running");
-});
+const startServer = async () => {
+  try {
+    // first database connect then start the server
+    await sequelize.authenticate();
+    console.log("database connected successfully");
+
+    const PORT = process.env.PORT;
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`server running on port ${PORT}`);
+    });
+  } catch (error) {
+    console.error("unable to connect to database", error);
+    process.exit(1);
+  }
+};
+startServer();
